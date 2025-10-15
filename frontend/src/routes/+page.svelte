@@ -106,7 +106,15 @@ const navItems = [
 			{/each}
 		</ul>
 
-		<p class="goal-message">太棒了！您已连续学习3天！</p>
+	<p class="goal-message">太棒了！您已连续学习3天！</p>
+</section>
+
+	<section class="cta-card">
+		<div class="cta-text">
+			<h2 class="cta-title">继续记忆词汇</h2>
+			<p class="cta-subtitle">打开闪卡快速复习今天的重点词汇。</p>
+		</div>
+		<a class="cta-button" href="/flashcards">开始复习</a>
 	</section>
 
 	<section class="modules">
@@ -267,6 +275,59 @@ const navItems = [
 		color: #1b4a87;
 		font-weight: 600;
 		font-size: 0.98rem;
+	}
+
+	.cta-card {
+		margin-top: 1.4rem;
+		padding: 1.2rem 1.4rem;
+		border-radius: 28px;
+		background: linear-gradient(135deg, #5f7bff, #7c5bff);
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1.1rem;
+		color: #f4f6ff;
+		box-shadow: 0 18px 32px rgba(74, 96, 255, 0.28);
+	}
+
+	.cta-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		min-width: 200px;
+	}
+
+	.cta-title {
+		margin: 0;
+		font-size: 1.35rem;
+		font-weight: 700;
+		letter-spacing: 0.01em;
+	}
+
+	.cta-subtitle {
+		margin: 0;
+		font-size: 0.92rem;
+		color: rgba(243, 246, 255, 0.8);
+	}
+
+	.cta-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.75rem 1.4rem;
+		border-radius: 999px;
+		background: #fefefe;
+		color: #3d4aad;
+		font-weight: 700;
+		text-decoration: none;
+		box-shadow: 0 14px 26px rgba(26, 32, 72, 0.22);
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	.cta-button:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 18px 32px rgba(26, 32, 72, 0.28);
 	}
 
 	.modules {

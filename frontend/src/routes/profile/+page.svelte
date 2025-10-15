@@ -46,18 +46,43 @@
 	</svelte:fragment>
 
 	<section class="avatar-card">
-		<div class="bg-blur"></div>
-		<figure class="avatar">
-			<img alt="Sophia 的头像" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnLnp7iffK2EJGBHr32RYNlV4zTKcCV-enBl9pfqlWCMuIAAOwFUuCjYOwb0BNKW9jN106HNVYptnzZ-9fQRJLn-W8G-8Y-i3GpZBKNfOLfOnNrWwMOPoKz9TACmBy57QTRh7pJ5b_A0JXT__FkyvUzSB6VysegynxaPstkd9bcfh6H7u8SIscZrJo1-oaylcsVhATjyVbU-hDeg2GzfJlraMoOzpw4hJ3SPyAX-KxkRAAfNskbiLuT_c_hgxd7tSpaQNzwnfyi3UO" />
-		</figure>
-		<h2>Sophia</h2>
-		<p class="meta">Level 10 · 1000 XP</p>
-		<div class="badges">
+		<div class="card-decoration">
+			<span aria-hidden="true" class="orb orb-1"></span>
+			<span aria-hidden="true" class="orb orb-2"></span>
+			<span aria-hidden="true" class="orb orb-3"></span>
+			<span aria-hidden="true" class="wave"></span>
+		</div>
+		<header class="avatar-hero">
+			<figure class="avatar">
+				<img
+					alt="Sophia 的头像"
+					src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnLnp7iffK2EJGBHr32RYNlV4zTKcCV-enBl9pfqlWCMuIAAOwFUuCjYOwb0BNKW9jN106HNVYptnzZ-9fQRJLn-W8G-8Y-i3GpZBKNfOLfOnNrWwMOPoKz9TACmBy57QTRh7pJ5b_A0JXT__FkyvUzSB6VysegynxaPstkd9bcfh6H7u8SIscZrJo1-oaylcsVhATjyVbU-hDeg2GzfJlraMoOzpw4hJ3SPyAX-KxkRAAfNskbiLuT_c_hgxd7tSpaQNzwnfyi3UO"
+				/>
+			</figure>
+			<div class="identity">
+				<h2>Sophia</h2>
+				<p class="subtitle">Level 10 · 1000 XP</p>
+				<div class="xp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="68">
+					<div class="meta-row">
+						<span class="label">距离下一等级</span>
+						<span class="value">68%</span>
+					</div>
+					<div class="track">
+						<div class="fill" style="--progress: 68%"></div>
+					</div>
+					<span class="hint">还需 320 XP 解锁 Level 11</span>
+				</div>
+			</div>
+		</header>
+		<div class="badge-grid" aria-label="成就">
 			{#each badges as badge, index (`badge-${index}`)}
-				<span>{badge}</span>
+				<span class="badge-chip">{badge}</span>
 			{/each}
 		</div>
-		<button class="edit" type="button">编辑资料</button>
+		<footer class="avatar-actions">
+			<button class="edit" type="button">编辑资料</button>
+			<button class="share" type="button">分享成绩</button>
+		</footer>
 	</section>
 
 	<section class="highlight-grid">
@@ -131,18 +156,6 @@
 		width: 100%;
 	}
 
-	.bg-blur {
-		position: absolute;
-		top: -25%;
-		left: -20%;
-		width: 140%;
-		height: 150%;
-		background: conic-gradient(from 210deg, #0c52d4, #1a6dff, #54c4ff, #174dff, #0c52d4);
-		filter: blur(46px) saturate(1.35);
-		opacity: 0.85;
-		transform: rotate(-6deg);
-	}
-
 	.avatar-card::before {
 		content: '';
 		position: absolute;
@@ -167,17 +180,25 @@
 		z-index: 1;
 	}
 
+	.avatar-hero {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1.2rem;
+		width: 100%;
+	}
+
 	.avatar {
-		width: 116px;
-		height: 116px;
+		width: 118px;
+		height: 118px;
 		border-radius: 50%;
 		margin: 0;
 		padding: 4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.2));
-		box-shadow: 0 20px 36px rgba(6, 18, 40, 0.4);
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.15));
+		box-shadow: 0 20px 36px rgba(6, 18, 40, 0.42);
 	}
 
 	.avatar img {
@@ -187,53 +208,116 @@
 		border-radius: 50%;
 	}
 
-	.avatar-card h2 {
+	.identity {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.65rem;
+	}
+
+	.identity h2 {
 		margin: 0;
 		font-size: 1.7rem;
 		font-weight: 800;
 		letter-spacing: 0.01em;
 	}
 
-	.avatar-card .meta {
+	.subtitle {
 		margin: 0;
 		font-size: 0.96rem;
 		color: rgba(255, 255, 255, 0.78);
 	}
 
-	.badges {
-		display: inline-flex;
-		gap: 0.5rem;
+	.xp-meter {
+		width: min(320px, 100%);
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		text-align: left;
+	}
+
+	.xp-meter .meta-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		color: rgba(255, 255, 255, 0.82);
+		font-size: 0.82rem;
+		font-weight: 600;
+	}
+
+	.xp-meter .track {
+		position: relative;
+		width: 100%;
+		height: 6px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.2);
+		overflow: hidden;
+	}
+
+	.xp-meter .fill {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: var(--progress);
+		height: 100%;
+		background: linear-gradient(90deg, #24d2ff, #1f7aff);
+		border-radius: inherit;
+		box-shadow: 0 0 14px rgba(36, 210, 255, 0.5);
+	}
+
+	.xp-meter .hint {
+		font-size: 0.78rem;
+		color: rgba(255, 255, 255, 0.72);
+	}
+
+	.badge-grid {
+		width: 100%;
+		display: flex;
+		gap: 0.6rem;
 		flex-wrap: wrap;
 		justify-content: center;
 	}
 
-	.badges span {
-		padding: 0.35rem 0.85rem;
+	.badge-chip {
+		padding: 0.35rem 0.9rem;
 		border-radius: 999px;
 		background: rgba(255, 255, 255, 0.2);
 		font-size: 0.78rem;
 		font-weight: 600;
 		backdrop-filter: blur(18px);
-		border: 1px solid rgba(255, 255, 255, 0.18);
+		border: 1px solid rgba(255, 255, 255, 0.16);
+		box-shadow: 0 8px 16px rgba(12, 24, 52, 0.28);
 	}
 
-	.edit {
+	.avatar-actions {
 		margin-top: 0.4rem;
+		width: 100%;
+		display: flex;
+		gap: 0.75rem;
+		justify-content: center;
+	}
+
+	.avatar-actions button {
 		padding: 0.68rem 1.5rem;
 		border-radius: 18px;
+		font-weight: 700;
+		cursor: pointer;
 		border: 1px solid rgba(255, 255, 255, 0.24);
 		background: rgba(255, 255, 255, 0.18);
 		color: #ffffff;
-		font-weight: 700;
-		cursor: pointer;
 		box-shadow: 0 10px 18px rgba(8, 20, 46, 0.35);
 		transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 	}
 
-	.edit:hover {
+	.avatar-actions button:hover {
 		transform: translateY(-1px);
 		background: rgba(255, 255, 255, 0.22);
 		box-shadow: 0 14px 24px rgba(8, 20, 46, 0.42);
+	}
+
+	.avatar-actions .share {
+		background: rgba(255, 255, 255, 0.12);
+		border-color: rgba(255, 255, 255, 0.18);
 	}
 
 	.highlight-grid {
