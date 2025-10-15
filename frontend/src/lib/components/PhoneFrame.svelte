@@ -184,6 +184,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		text-decoration: none;
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 		cursor: pointer;
 		transition: background 0.2s ease;

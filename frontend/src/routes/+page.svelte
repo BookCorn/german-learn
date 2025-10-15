@@ -1,7 +1,10 @@
 <script lang="ts">
-import PhoneFrame from '$lib/components/PhoneFrame.svelte';
+	import PhoneFrame from '$lib/components/PhoneFrame.svelte';
+	import logo from '$lib/logo.jpg';
 
-const days = [
+	const COMING_SOON_PATH = '/coming-soon';
+
+	const days = [
 		{ label: '一', state: 'done' },
 		{ label: '二', state: 'done' },
 		{ label: '三', state: 'done' },
@@ -29,16 +32,16 @@ const days = [
 		}
 	];
 
-const tasks = [
-	{ title: '完成每天的学习任务', xp: '1000 XP' },
-	{ title: '完成每天的学习任务', xp: '1000 XP', variant: 'secondary' }
-];
+	const tasks = [
+		{ title: '完成每天的学习任务', xp: '1000 XP' },
+		{ title: '完成每天的学习任务', xp: '1000 XP', variant: 'secondary' }
+	];
 
-const navItems = [
-	{ id: 'home', href: '/', label: '主页' },
-	{ id: 'learning', href: '/learning', label: '学习模块' },
-	{ id: 'profile', href: '/profile', label: '个人中心' }
-];
+	const navItems = [
+		{ id: 'home', href: '/', label: '首页' },
+		{ id: 'learning', href: '/learning', label: '学习' },
+		{ id: 'profile', href: '/profile', label: '我的' }
+	];
 </script>
 
 <svelte:head>
@@ -56,15 +59,14 @@ const navItems = [
 <PhoneFrame {navItems} navActive="home">
 	<svelte:fragment slot="header">
 		<div class="top-bar">
-			<span aria-hidden="true" class="ghost-button"></span>
-			<h1 class="top-bar-title">主页</h1>
-			<button aria-label="打开设置" class="icon-button">
+			<img alt="German Learn Logo" class="brand-logo" src={logo} />
+			<a aria-label="打开设置" class="icon-button" href={COMING_SOON_PATH}>
 				<svg fill="currentColor" height="22" viewBox="0 0 256 256" width="22" xmlns="http://www.w3.org/2000/svg">
 					<path
 						d="M216.7,138.78l-14.94-18.67a8,8,0,0,0-6.84-2.88,74.5,74.5,0,0,1-10.37,0,8,8,0,0,0-6.84,2.88L163.6,138.78A91.81,91.81,0,0,1,148.8,172l-2.61,23.49a8,8,0,0,0,3.94,6.72,107.13,107.13,0,0,0,26.24,10.87,8,8,0,0,0,7.06-1.49l18.64-14.92a8,8,0,0,0,2.88-6.84,74.5,74.5,0,0,1,0-10.37,8,8,0,0,0-2.88-6.84ZM128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm35.6-84.3L178.52,78a8,8,0,0,0-5.1-2.64,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-2.64-5.1l-2.51-22.58a91.32,91.32,0,0,1-15-6.23l-17.74,14.19a8,8,0,0,0-5.48,1.74,73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48-1.74L100.45,40.2a91.57,91.57,0,0,1-15,6.23L82.89,69a8,8,0,0,0-2.64,5.1,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-5.1,2.64l-22.58,2.51a91.32,91.32,0,0,1-6.23,15L54.36,100.5A8,8,0,0,0,56.1,106a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0-1.74,5.48L40.2,138a91.57,91.57,0,0,1,6.23,15l22.58-2.51a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14,8,8,0,0,0,2.64-5.1L85.4,113.43a91.32,91.32,0,0,1,15-6.23L118.14,93a8,8,0,0,0,5.48-1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48,1.74L155.55,107.8a91.57,91.57,0,0,1,15,6.23L173.11,91.45a8,8,0,0,0,2.64-5.1A74.11,74.11,0,0,1,182,79.52a8,8,0,0,0,5.1-2.64l22.58-2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74a8,8,0,0,0-1.74,5.48,73.93,73.93,0,0,1,0,8.68A8,8,0,0,0,201.4,138Z"
 					/>
 				</svg>
-			</button>
+			</a>
 		</div>
 	</svelte:fragment>
 
@@ -84,7 +86,7 @@ const navItems = [
 	<section class="card daily-goal">
 		<header class="daily-goal-header">
 			<h2 class="section-heading">每日学习目标</h2>
-			<button class="link-button" type="button">设定目标</button>
+			<a class="link-button" href={COMING_SOON_PATH}>设定目标</a>
 		</header>
 
 		<ul class="goal-days">
@@ -121,12 +123,12 @@ const navItems = [
 		<h2 class="section-heading">学习模块</h2>
 		<div class="modules-grid">
 			{#each modules as module, index (module.title + index)}
-				<div class="module-card">
+				<a class="module-card" href={COMING_SOON_PATH}>
 					<div class="module-image">
 						<img alt={module.title} src={module.image} />
 					</div>
 					<p>{module.title}</p>
-				</div>
+				</a>
 			{/each}
 		</div>
 	</section>
@@ -169,6 +171,13 @@ const navItems = [
 		margin-top: 0.6rem;
 	}
 
+	.brand-logo {
+		height: 2.4rem;
+		border-radius: 12px;
+		object-fit: cover;
+		box-shadow: 0 6px 16px rgba(22, 46, 82, 0.18);
+	}
+
 	.avatar {
 		width: 6.25rem;
 		height: 6.25rem;
@@ -205,12 +214,21 @@ const navItems = [
 	}
 
 	.link-button {
-		border: none;
-		background: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		color: #1470ff;
 		font-weight: 600;
 		font-size: 0.95rem;
-		cursor: pointer;
+		text-decoration: none;
+		padding: 0.3rem 0.6rem;
+		border-radius: 999px;
+		transition: background 0.2s ease, color 0.2s ease;
+	}
+
+	.link-button:hover {
+		background: rgba(20, 112, 255, 0.12);
+		color: #0f56d4;
 	}
 
 	.goal-days {
@@ -343,13 +361,16 @@ const navItems = [
 	}
 
 	.module-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.8rem;
 		background: #ffffff;
 		border-radius: 26px;
 		padding: 0.75rem;
 		box-shadow: 0 14px 28px rgba(18, 46, 84, 0.08);
-		display: flex;
-		flex-direction: column;
-		gap: 0.8rem;
+		text-decoration: none;
+		color: inherit;
+		transition: transform 0.18s ease, box-shadow 0.18s ease;
 	}
 
 	.module-image {
@@ -373,6 +394,11 @@ const navItems = [
 		font-weight: 600;
 		color: #1f2d43;
 		font-size: 1rem;
+	}
+
+	.module-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 18px 32px rgba(18, 46, 84, 0.12);
 	}
 
 	.plan {

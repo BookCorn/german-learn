@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skeuomorphic Flashcards — Modern</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      /* Design tokens for modern skeuomorphism (neumorphism + light bevels) */
+      --bg-1: #1f2230;
+      --bg-2: #2a2d3d;
+      --surface: #34384b;
+      --surface-hi: #3c4156;
+      --ink: #e6e8ef;
+      --ink-dim: #bcc1d6;
+      --accent-1: #667eea;
+      --accent-2: #764ba2;
+      --bevel-light: rgba(255,255,255,.35);
+      --bevel-dark: rgba(0,0,0,.35);
+      --noise-opacity: .03;
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --shadow-outer: 0 18px 40px rgba(0,0,0,.45), 0 6px 18px rgba(0,0,0,.35);
+      --shadow-inner: inset 0 2px 4px rgba(255,255,255,.08), inset 0 -3px 8px rgba(0,0,0,.35);
+      --ring: 0 0 0 3px rgba(102,126,234,.45);
+      --progress: 0%;
+      --card-rotation: 0deg;
+      --press: 0px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      display:grid;
+      place-items:center;
+      background: radial-gradient(1200px 800px at 60% -10%, rgba(255,255,255,.05), transparent 60%), linear-gradient(180deg, var(--bg-2), var(--bg-1));
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol", "Noto Color Emoji";
+      color: var(--ink);
+      overflow:hidden;
+    }
+
+    /* global noise */
+    .noise{
+      position:fixed; inset:0; pointer-events:none; opacity:var(--noise-opacity); z-index:0;
+    }
+    .app{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:26px; }
+
+    /* stack */
+    .stack{
+      position:relative; width:min(92vw, 520px); height:min(58vh, 340px); perspective:1200px;
+    }
+    .stack-back{
+      position:absolute; inset:0; border-radius:var(--radius-xl);
+      background: linear-gradient(145deg, var(--surface), #2c3041);
+      box-shadow: var(--shadow-outer);
+      transform: translateZ(-30px) translateY(12px) rotateX(3deg);
+      opacity:.65;
+    }
+    .stack-back:nth-child(2){ transform: translateZ(-60px) translateY(22px) rotateX(6deg); opacity:.45; }
+
+    /* card */
+    .card{
+      width:100%; height:100%; position:relative; transform-style:preserve-3d;
+      transform: rotateY(var(--card-rotation)); transition: transform .55s cubic-bezier(.4,0,.2,1);
+      cursor:pointer; outline:none;
+    }
+    .face{
+      position:absolute; inset:0; border-radius:var(--radius-xl); backface-visibility:hidden; overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      display:flex; align-items:center; justify-content:center; padding:36px;
+      box-shadow: var(--shadow-outer), var(--shadow-inner);
+    }
+    .front{
+      background: linear-gradient(145deg, #fafbff, #c9d3e2);
+      color:#24283b;
+    }
+    .front::after{
+      /* micro-emboss lines */
+      content:""; position:absolute; inset:0;
+      background: repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+      pointer-events:none;
+    }
+    .back{
+      background: linear-gradient(145deg, var(--accent-1), var(--accent-2));
+      color:#fff; transform: rotateY(180deg);
+    }
+    .content{ text-align:center; max-width: 90%; }
+    .label{ text-transform:uppercase; letter-spacing:2px; font-size:11px; opacity:.7; margin-bottom:14px; }
+    .text{ font-size: clamp(22px, 3.2vw + 14px, 34px); font-weight: 700; line-height:1.25; text-wrap:balance; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+
+    /* Controls bar */
+    .controls{
+      display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+      background: linear-gradient(145deg, var(--surface-hi), var(--surface));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius-lg); padding:14px 16px; box-shadow: var(--shadow-outer), var(--shadow-inner);
+    }
+    .btn{
+      position:relative; width:52px; height:52px; border:none; border-radius:14px; cursor:pointer;
+      background: linear-gradient(145deg, #545a74, #2f3447);
+      color:#0a0b10; transform: translateY(var(--press)); transition: filter .1s ease, transform .1s ease, box-shadow .1s ease;
+      box-shadow: 0 8px 16px rgba(0,0,0,.35), inset 0 1px 2px rgba(255,255,255,.08);
+      border:1px solid rgba(0,0,0,.35);
+      display:grid; place-items:center;
+    }
+    .btn:active{ --press: 3px; box-shadow: 0 4px 10px rgba(0,0,0,.35), inset 0 2px 4px rgba(0,0,0,.35); }
+    .btn .inner{
+      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+      background: linear-gradient(145deg, #f5f7fa, #c3cfe2);
+      box-shadow: inset 0 -2px 6px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.85);
+      font-weight:800; font-size:18px; color:#1e2231;
+      user-select:none;
+    }
+    .btn[aria-pressed="true"] .inner{ background: linear-gradient(145deg, #c3cfe2, #f5f7fa); }
+
+    .group{ display:flex; gap:10px; align-items:center; }
+
+    /* Toggle switch (Shuffle) */
+    .switch{ position:relative; width:80px; height:36px; border-radius:999px; padding:6px; background: linear-gradient(145deg, #2b3042, #1e2333);
+      border:1px solid rgba(0,0,0,.45); box-shadow: var(--shadow-inner); cursor:pointer; display:flex; align-items:center;
+      gap:8px; color: var(--ink-dim); font-size:12px; user-select:none;
+    }
+    .knob{ position:absolute; top:5px; left:5px; width:26px; height:26px; border-radius:999px;
+      background: linear-gradient(145deg, #fafbff, #cbd5e5); box-shadow: 0 6px 14px rgba(0,0,0,.35), inset 0 1px 2px rgba(255,255,255,.9);
+      transition:left .18s ease;
+    }
+    .switch[data-on="true"] .knob{ left:49px; }
+    .switch .label{ margin:0; font-size:11px; letter-spacing:.4px; }
+
+    /* Dropdown */
+    .select{
+      position:relative; min-width:160px; height:40px; border-radius:12px; padding:0 12px; display:flex; align-items:center; gap:8px;
+      background: linear-gradient(145deg, #2b3042, #1e2333); color: var(--ink-dim); border:1px solid rgba(0,0,0,.45);
+      box-shadow: var(--shadow-inner);
+    }
+    .select select{
+      appearance:none; background:transparent; border:none; outline:none; color:inherit; width:100%; font: inherit; padding:6px 0;
+    }
+    .select:focus-within{ box-shadow: var(--ring), var(--shadow-inner); }
+
+    /* Progress */
+    .progress{
+      position:relative; width: clamp(220px, 26vw, 340px); height:44px; border-radius:14px; padding:8px;
+      background: linear-gradient(145deg, #1a1d2a, #2a2d3a); border:1px solid rgba(0,0,0,.45); box-shadow: var(--shadow-inner);
+    }
+    .bar{ position:relative; width:100%; height:100%; background: rgba(255,255,255,.06); border-radius:10px; overflow:hidden; }
+    .fill{
+      position:absolute; inset:0; width: var(--progress); height:100%;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow: 0 2px 10px rgba(102,126,234,.45), inset 0 1px 2px rgba(255,255,255,.35);
+      transition: width .25s ease;
+    }
+    .pct{ position:absolute; inset:0; display:grid; place-items:center; font-weight:700; font-size:12px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+
+    /* Footer counter + actions */
+    .footer{
+      display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; color:var(--ink-dim);
+    }
+    .pill{
+      padding:10px 14px; border-radius:12px; background: linear-gradient(145deg, #2a2d3a, #1a1d2a);
+      border:1px solid rgba(255,255,255,.06); box-shadow: var(--shadow-inner); font-weight:600; font-size:13px;
+    }
+    .action{
+      display:flex; gap:10px;
+    }
+    .action .btn .inner{ width:36px; height:36px; font-size:16px; }
+
+    /* Accessibility */
+    .card:focus{ box-shadow: var(--ring); border-radius: var(--radius-xl); }
+
+    /* Mobile */
+    @media (max-width: 520px){
+      .controls{ gap:10px; }
+      .btn{ width:48px; height:48px; }
+      .btn .inner{ width:36px; height:36px; }
+      .progress{ width: clamp(200px, 60vw, 280px); }
+    }
+  </style>
+</head>
+<body>
+  <!-- procedural noise -->
+  <svg class="noise" xmlns="http://www.w3.org/2000/svg">
+    <filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" /></filter>
+    <rect width="100%" height="100%" filter="url(#n)"></rect>
+  </svg>
+
+  <main class="app" aria-label="Flashcard trainer">
+    <section class="stack">
+      <div class="stack-back"></div>
+      <div class="stack-back"></div>
+
+      <!-- Interactive card -->
+      <div id="card" class="card" role="button" aria-label="Flip card" tabindex="0" aria-pressed="false">
+        <div class="face front">
+          <div class="content">
+            <div class="label">Deutsch</div>
+            <div class="text" id="frontText">der Maschinenbau</div>
+          </div>
+        </div>
+        <div class="face back">
+          <div class="content">
+            <div class="label">English</div>
+            <div class="text" id="backText">mechanical engineering</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls" aria-label="Controls">
+      <div class="group">
+        <button class="btn" id="prevBtn" title="Previous (←)"><div class="inner">←</div></button>
+        <button class="btn" id="flipBtn" title="Flip (Space / F)"><div class="inner">⤾</div></button>
+        <button class="btn" id="nextBtn" title="Next (→)"><div class="inner">→</div></button>
+      </div>
+
+      <div class="group">
+        <div class="switch" id="shuffleSwitch" role="switch" aria-checked="false" tabindex="0">
+          <div class="knob"></div>
+          <span class="label">&nbsp;Shuffle</span>
+        </div>
+        <div class="select">
+          <span style="opacity:.65;font-size:12px">Show:</span>
+          <select id="filterSelect" title="Filter deck">
+            <option value="all">All cards</option>
+            <option value="unknown">Unknown only</option>
+            <option value="known">Known only</option>
+            <option value="starred">Starred only</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="progress" aria-label="Progress">
+        <div class="bar">
+          <div class="fill" id="progressFill"></div>
+          <div class="pct" id="progressText">0% Complete</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <span class="pill"><span id="counter">1</span> / <span id="total">0</span></span>
+      <div class="action">
+        <button class="btn" id="againBtn" title="Mark again (2)"><div class="inner">↻</div></button>
+        <button class="btn" id="knownBtn" title="Mark known (1)"><div class="inner">✓</div></button>
+        <button class="btn" id="starBtn"  title="Star (S)"><div class="inner">★</div></button>
+        <button class="btn" id="speakBtn" title="Speak (T)"><div class="inner">🔊</div></button>
+        <button class="btn" id="resetBtn" title="Reset progress"><div class="inner">⟲</div></button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- Deck data (you can extend freely) ---
+    const deck = [
+      { front: "der Maschinenbau", back: "mechanical engineering" },
+      { front: "die Steuerung", back: "control system" },
+      { front: "der Sensor", back: "sensor" },
+      { front: "die Programmierung", back: "programming" },
+      { front: "der Mikrocontroller", back: "microcontroller" },
+      { front: "die Automatisierung", back: "automation" },
+      { front: "das Getriebe", back: "transmission / gearbox" },
+      { front: "der Aktuator", back: "actuator" },
+      { front: "die Schnittstelle", back: "interface" },
+      { front: "der Regelkreis", back: "control loop" },
+      { front: "die Fertigung", back: "manufacturing" },
+      { front: "der Roboter", back: "robot" },
+    ];
+
+    // --- State ---
+    const els = {
+      card: document.getElementById("card"),
+      front: document.getElementById("frontText"),
+      back: document.getElementById("backText"),
+      prev: document.getElementById("prevBtn"),
+      next: document.getElementById("nextBtn"),
+      flip: document.getElementById("flipBtn"),
+      shuffle: document.getElementById("shuffleSwitch"),
+      filter: document.getElementById("filterSelect"),
+      counter: document.getElementById("counter"),
+      total: document.getElementById("total"),
+      progressFill: document.getElementById("progressFill"),
+      progressText: document.getElementById("progressText"),
+      again: document.getElementById("againBtn"),
+      known: document.getElementById("knownBtn"),
+      star: document.getElementById("starBtn"),
+      speak: document.getElementById("speakBtn"),
+      reset: document.getElementById("resetBtn")
+    };
+
+    const STORAGE_KEY = "flashcard_state_v2";
+    let state = {
+      order: deck.map((_, i) => i),
+      index: 0,
+      flipped: false,
+      shuffle: false,
+      filter: "all",
+      known: new Set(),
+      starred: new Set(),
+    };
+
+    // Load state
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const s = JSON.parse(saved);
+        state.order = Array.isArray(s.order) ? s.order.filter(i=>i < deck.length) : state.order;
+        state.index = Math.min(Math.max(0, s.index ?? 0), Math.max(0, state.order.length-1));
+        state.shuffle = !!s.shuffle;
+        state.filter = s.filter ?? "all";
+        state.known = new Set(Array.isArray(s.known) ? s.known : []);
+        state.starred = new Set(Array.isArray(s.starred) ? s.starred : []);
+      } catch(_) {}
+    }
+
+    function persist(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        order: state.order,
+        index: state.index,
+        shuffle: state.shuffle,
+        filter: state.filter,
+        known: [...state.known],
+        starred: [...state.starred],
+      }));
+    }
+
+    function shuffleArray(arr){
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function computeVisibleOrder(){
+      let base = [...Array(deck.length).keys()];
+      // Filter
+      if (state.filter === "unknown") base = base.filter(i => !state.known.has(i));
+      if (state.filter === "known") base = base.filter(i =>  state.known.has(i));
+      if (state.filter === "starred") base = base.filter(i => state.starred.has(i));
+      // Shuffle
+      if (state.shuffle) base = shuffleArray(base);
+      // If current card not in filtered set, reset index
+      if (!base.length) { state.index = 0; }
+      else if (!base.includes(currentCardId())) { state.index = 0; }
+      state.order = base;
+    }
+
+    function currentCardId(){
+      return state.order[state.index] ?? 0;
+    }
+
+    function setFlipped(f){
+      state.flipped = f;
+      document.documentElement.style.setProperty("--card-rotation", f ? "180deg" : "0deg");
+      els.card.setAttribute("aria-pressed", String(f));
+    }
+
+    function updateUI(){
+      computeVisibleOrder();
+      els.total.textContent = state.order.length;
+      if (!state.order.length){
+        els.front.textContent = "No cards in view";
+        els.back.textContent = "Change filter to see cards";
+        setFlipped(false);
+        els.counter.textContent = "0";
+        document.documentElement.style.setProperty("--progress", "0%");
+        els.progressText.textContent = "0% Complete";
+        return;
+      }
+      const id = currentCardId();
+      const data = deck[id];
+      els.front.textContent = data.front;
+      els.back.textContent  = data.back;
+      els.counter.textContent = (state.index+1).toString();
+
+      // progress (known across full deck)
+      const pct = Math.round((state.known.size / deck.length) * 100);
+      document.documentElement.style.setProperty("--progress", pct + "%");
+      els.progressText.textContent = pct + "% Known";
+      els.shuffle.dataset.on = state.shuffle ? "true" : "false";
+      els.shuffle.setAttribute("aria-checked", String(state.shuffle));
+      // reflect star / known
+      els.star.setAttribute("aria-pressed", String(state.starred.has(id)));
+      els.known.setAttribute("aria-pressed", String(state.known.has(id)));
+      persist();
+    }
+
+    function next(){
+      if (!state.order.length) return;
+      state.index = (state.index + 1) % state.order.length;
+      setFlipped(false);
+      updateUI();
+    }
+    function prev(){
+      if (!state.order.length) return;
+      state.index = (state.index - 1 + state.order.length) % state.order.length;
+      setFlipped(false);
+      updateUI();
+    }
+
+    // --- Events ---
+    els.card.addEventListener("click", ()=> setFlipped(!state.flipped));
+    els.flip.addEventListener("click", ()=> setFlipped(!state.flipped));
+    els.next.addEventListener("click", next);
+    els.prev.addEventListener("click", prev);
+
+    els.shuffle.addEventListener("click", ()=>{
+      state.shuffle = !state.shuffle;
+      computeVisibleOrder();
+      state.index = 0;
+      updateUI();
+    });
+    els.shuffle.addEventListener("keydown", (e)=>{
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.shuffle.click(); }
+    })
+
+    els.filter.addEventListener("change", ()=>{
+      state.filter = els.filter.value;
+      computeVisibleOrder();
+      state.index = 0;
+      updateUI();
+    });
+
+    els.known.addEventListener("click", ()=>{
+      const id = currentCardId();
+      if (state.known.has(id)) state.known.delete(id); else state.known.add(id);
+      updateUI();
+    });
+    els.again.addEventListener("click", ()=>{
+      const id = currentCardId();
+      state.known.delete(id);
+      // move current id a bit further in queue if shuffled off
+      if (state.order.length > 1){
+        const insertAt = Math.min(state.index + 3, state.order.length);
+        state.order.splice(state.index,1);
+        state.order.splice(insertAt,0,id);
+        state.index = Math.min(state.index, state.order.length-1);
+      }
+      setFlipped(false);
+      updateUI();
+    });
+    els.star.addEventListener("click", ()=>{
+      const id = currentCardId();
+      if (state.starred.has(id)) state.starred.delete(id); else state.starred.add(id);
+      updateUI();
+    });
+    els.reset.addEventListener("click", ()=>{
+      if (confirm("Reset known/starred and progress?")){
+        state.known.clear(); state.starred.clear();
+        state.filter = "all"; els.filter.value = "all";
+        state.shuffle = false;
+        state.index = 0;
+        updateUI();
+      }
+    });
+
+    // Keyboard navigation
+    document.addEventListener("keydown", (e)=>{
+      if (["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName)) return;
+      if (e.key === "ArrowRight") next();
+      if (e.key === "ArrowLeft")  prev();
+      if (e.key.toLowerCase() === "f" || e.key === " "){ e.preventDefault(); setFlipped(!state.flipped); }
+      if (e.key === "1") els.known.click();
+      if (e.key === "2") els.again.click();
+      if (e.key.toLowerCase() === "s") els.star.click();
+      if (e.key.toLowerCase() === "t") speakFront();
+    });
+
+    // Swipe on mobile
+    (function enableSwipe(){
+      let startX = null;
+      els.card.addEventListener("touchstart", (e)=>{ startX = e.touches[0].clientX; }, {passive:true});
+      els.card.addEventListener("touchend", (e)=>{
+        if (startX == null) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dx) > 40){ dx < 0 ? next() : prev(); } else { setFlipped(!state.flipped); }
+        startX = null;
+      });
+    })();
+
+    // Speech synthesis (German if available)
+    let voices = [];
+    function loadVoices(){
+      voices = window.speechSynthesis.getVoices();
+    }
+    window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
+    function speakFront(){
+      const text = deck[currentCardId()].front;
+      const u = new SpeechSynthesisUtterance(text);
+      const de = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("de"));
+      if (de) u.voice = de;
+      u.rate = 0.95; u.pitch = 1.0;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+    els.speak.addEventListener("click", speakFront);
+
+    // Init
+    computeVisibleOrder();
+    updateUI();
+  </script>
+</body>
+</html>
