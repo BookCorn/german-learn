@@ -1,0 +1,25 @@
+:root {
+	--page-bg-top: linear-gradient(180deg, #f6f8fc 0%, #ebeff6 100%);
+	--phone-bg: #f4f7fb;
+	--nav-active: #1870ff;
+	--nav-inactive: #98a7bd;
+	--nav-icon-active-bg: rgba(24, 112, 255, 0.12);
+	--border-soft: rgba(207, 217, 235, 0.4);
+}
+
+.phone-surface {
+	padding: calc(env(safe-area-inset-top, 0) + 3rem) 1.5rem calc(env(safe-area-inset-bottom, 0) + 3rem);
+	background: var(--page-bg-top);
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	min-height: 100vh;
+	box-sizing: border-box;
+}
+
+@media (max-width: 500px) {
+	.phone-surface {
+		padding: calc(env(safe-area-inset-top, 0)) 0 calc(env(safe-area-inset-bottom, 0));
+		background: var(--phone-bg);
+	}
+}
