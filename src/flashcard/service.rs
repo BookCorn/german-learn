@@ -2,13 +2,13 @@ use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{NotSet, Set},
-    ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, EntityTrait, FromQueryResult,
-    PaginatorTrait, QueryFilter, QueryOrder, Statement, TransactionTrait, Value,
-    prelude::DateTimeWithTimeZone,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, FromQueryResult,
+    PaginatorTrait, QueryFilter, Statement, TransactionTrait, Value,
+    prelude::{DateTimeWithTimeZone, Json},
 };
 
 use crate::{
-    entity::{flashcard_progress, flashcard_reviews, vocabulary_entries},
+    entity::{user_flashcard_progress, user_flashcard_reviews, vocabulary_entries},
     error::AppError,
     flashcard::dto::{
         FlashcardResponse, NextCardQuery, PartOfSpeechStats, ReviewRequest, StatsResponse,
@@ -31,31 +31,127 @@ impl FlashcardService {
 
     pub async fn get_next_card(
         &self,
+        user_id: &str,
         params: NextCardQuery,
     ) -> Result<Option<FlashcardResponse>, AppError> {
         let db = self.db();
-        let status_condition = build_status_condition(params.status.as_deref())?;
+        let part_filter = match params.part_of_speech.as_deref() {
+            Some(part) => Some(normalize_part_of_speech(part)?),
+            None => None,
+        };
 
-        let mut select =
-            vocabulary_entries::Entity::find().find_also_related(flashcard_progress::Entity);
-        select = select.filter(status_condition);
+        // Build SQL with left join by user on (entry_id AND user_id)
+        let mut sql = String::from(
+            r#"
+            SELECT 
+                ve.entry_id, ve.word, ve.part_of_speech, ve.user_owner, ve.english, ve.meaning,
+                ve.examples, ve.themes, ve.source_table, ve.source_created_time, ve.extra,
+                ufp.progress_id as ufp_progress_id, ufp.user_id as ufp_user_id,
+                ufp.status as ufp_status, ufp.times_seen as ufp_times_seen,
+                ufp.times_mastered as ufp_times_mastered, ufp.last_seen_at as ufp_last_seen_at,
+                ufp.created_at as ufp_created_at, ufp.updated_at as ufp_updated_at
+            FROM vocabulary_entries ve
+            LEFT JOIN user_flashcard_progress ufp
+              ON ufp.entry_id = ve.entry_id AND ufp.user_id = $1
+            "#,
+        );
 
-        if let Some(part) = params.part_of_speech.as_deref() {
-            let normalized = normalize_part_of_speech(part)?;
-            select = select.filter(vocabulary_entries::Column::PartOfSpeech.eq(normalized));
+        let mut values: Vec<Value> = vec![user_id.into()];
+
+        // owner filter: global or owned by user
+        sql.push_str(" WHERE (ve.user_owner IS NULL OR ve.user_owner = $1)");
+        if let Some(part) = part_filter.as_deref() {
+            sql.push_str(" AND ve.part_of_speech = $2");
+            values.push(part.into());
         }
 
-        let result = select
-            .order_by_asc(flashcard_progress::Column::TimesSeen)
-            .order_by_asc(vocabulary_entries::Column::SourceCreatedTime)
-            .order_by_asc(vocabulary_entries::Column::EntryId)
-            .one(db)
+        // status filter
+        match params.status.as_deref() {
+            None | Some("all") => {
+                // no extra filter
+            }
+            Some(s) => match s.to_lowercase().as_str() {
+                "new" => {
+                    if values.len() == 1 { sql.push_str(" WHERE "); } else { sql.push_str(" AND "); }
+                    sql.push_str(" ufp.entry_id IS NULL ");
+                }
+                "mastered" => {
+                    if values.len() == 1 { sql.push_str(" WHERE "); } else { sql.push_str(" AND "); }
+                    sql.push_str(" ufp.status = 'mastered' ");
+                }
+                "learning" => {
+                    if values.len() == 1 { sql.push_str(" WHERE "); } else { sql.push_str(" AND "); }
+                    sql.push_str(" (ufp.status IS NOT NULL AND ufp.status <> 'mastered') ");
+                }
+                other => return Err(AppError::Validation(format!("unsupported filter status '{}'", other))),
+            },
+        }
+
+        sql.push_str(" ORDER BY ufp.times_seen ASC NULLS FIRST, ve.source_created_time ASC NULLS FIRST, ve.entry_id ASC LIMIT 1");
+
+        #[derive(FromQueryResult)]
+        struct Row {
+            entry_id: i32,
+            word: String,
+            part_of_speech: String,
+            user_owner: Option<String>,
+            english: Option<String>,
+            meaning: Option<String>,
+            examples: Option<String>,
+            themes: Option<String>,
+            source_table: String,
+            source_created_time: Option<DateTimeWithTimeZone>,
+            extra: Option<Json>,
+            ufp_progress_id: Option<i64>,
+            ufp_user_id: Option<String>,
+            ufp_status: Option<String>,
+            ufp_times_seen: Option<i32>,
+            ufp_times_mastered: Option<i32>,
+            ufp_last_seen_at: Option<DateTimeWithTimeZone>,
+            ufp_created_at: Option<DateTimeWithTimeZone>,
+            ufp_updated_at: Option<DateTimeWithTimeZone>,
+        }
+
+        let backend = db.get_database_backend();
+        let rows = Row::find_by_statement(Statement::from_sql_and_values(backend, &sql, values))
+            .all(db)
             .await?;
 
-        Ok(result.map(|(entry, progress)| FlashcardResponse::from_models(entry, progress)))
+        if let Some(row) = rows.into_iter().next() {
+            // Build entry model
+            let entry = vocabulary_entries::Model {
+                entry_id: row.entry_id,
+                word: row.word,
+                part_of_speech: row.part_of_speech,
+                user_owner: row.user_owner,
+                english: row.english,
+                meaning: row.meaning,
+                examples: row.examples,
+                themes: row.themes,
+                source_table: row.source_table,
+                source_created_time: row.source_created_time,
+                extra: row.extra,
+            };
+
+            let progress = row.ufp_progress_id.map(|progress_id| user_flashcard_progress::Model {
+                progress_id,
+                user_id: row.ufp_user_id.unwrap_or_default(),
+                entry_id: entry.entry_id,
+                status: row.ufp_status.unwrap_or_else(|| "learning".to_string()),
+                times_seen: row.ufp_times_seen.unwrap_or(0),
+                times_mastered: row.ufp_times_mastered.unwrap_or(0),
+                last_seen_at: row.ufp_last_seen_at,
+                created_at: row.ufp_created_at.unwrap_or_else(|| Utc::now().into()),
+                updated_at: row.ufp_updated_at.unwrap_or_else(|| Utc::now().into()),
+            });
+
+            Ok(Some(FlashcardResponse::from_entry_and_user_progress(entry, progress)))
+        } else {
+            Ok(None)
+        }
     }
 
-    pub async fn record_review(&self, entry_id: i32, req: ReviewRequest) -> Result<(), AppError> {
+    pub async fn record_review(&self, user_id: &str, entry_id: i32, req: ReviewRequest) -> Result<(), AppError> {
         let status = normalize_status(&req.result)?;
         let status_str = status.to_string();
         let now_utc = Utc::now();
@@ -70,8 +166,22 @@ impl FlashcardService {
 
         let txn = db.begin().await?;
 
-        let existing = flashcard_progress::Entity::find()
-            .filter(flashcard_progress::Column::EntryId.eq(entry_id))
+        // Ensure user row exists for FK
+        let backend = txn.get_database_backend();
+        let _ = sea_orm::Statement::from_sql_and_values(
+            backend,
+            "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+            vec![user_id.into()],
+        );
+        txn.execute(Statement::from_sql_and_values(
+            backend,
+            "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+            vec![user_id.into()],
+        )).await?;
+
+        let existing = user_flashcard_progress::Entity::find()
+            .filter(user_flashcard_progress::Column::EntryId.eq(entry_id))
+            .filter(user_flashcard_progress::Column::UserId.eq(user_id.to_string()))
             .one(&txn)
             .await?;
 
@@ -83,7 +193,7 @@ impl FlashcardService {
                 } else {
                     model.times_mastered
                 };
-                let mut active: flashcard_progress::ActiveModel = model.into();
+                let mut active: user_flashcard_progress::ActiveModel = model.into();
                 active.status = Set(status_str.clone());
                 active.times_seen = Set(times_seen);
                 active.times_mastered = Set(times_mastered);
@@ -93,8 +203,9 @@ impl FlashcardService {
             }
             None => {
                 let times_mastered = if status == STATUS_MASTERED { 1 } else { 0 };
-                let active = flashcard_progress::ActiveModel {
+                let active = user_flashcard_progress::ActiveModel {
                     progress_id: NotSet,
+                    user_id: Set(user_id.to_string()),
                     entry_id: Set(entry_id),
                     status: Set(status_str.clone()),
                     times_seen: Set(1),
@@ -107,8 +218,9 @@ impl FlashcardService {
             }
         }
 
-        let review = flashcard_reviews::ActiveModel {
+        let review = user_flashcard_reviews::ActiveModel {
             review_id: NotSet,
+            user_id: Set(user_id.to_string()),
             entry_id: Set(entry_id),
             result: Set(status_str),
             notes: Set(req.notes),
@@ -120,35 +232,51 @@ impl FlashcardService {
         Ok(())
     }
 
-    pub async fn get_stats(&self) -> Result<StatsResponse, AppError> {
+    pub async fn get_stats(&self, user_id: &str) -> Result<StatsResponse, AppError> {
         let db = self.db();
-        let total = vocabulary_entries::Entity::find().count(db).await?;
-        let total_progress = flashcard_progress::Entity::find().count(db).await?;
-        let mastered = flashcard_progress::Entity::find()
-            .filter(flashcard_progress::Column::Status.eq(STATUS_MASTERED))
-            .count(db)
-            .await?;
-        let learning = flashcard_progress::Entity::find()
-            .filter(flashcard_progress::Column::Status.ne(STATUS_MASTERED))
-            .count(db)
-            .await?;
-        let new = total.saturating_sub(total_progress);
-
+        // total visible entries (global + owned)
+        #[derive(FromQueryResult)] struct C { total: i64 }
         let backend = db.get_database_backend();
+        let total = C::find_by_statement(Statement::from_sql_and_values(
+            backend,
+            "SELECT COUNT(*) AS total FROM vocabulary_entries ve WHERE (ve.user_owner IS NULL OR ve.user_owner = $1)",
+            vec![user_id.into()],
+        )).one(db).await?.map(|c| c.total as u64).unwrap_or(0);
+        let backend = db.get_database_backend();
+        // totals per user
+        let counts = TotalCounts::find_by_statement(Statement::from_sql_and_values(
+            backend,
+            r#"
+                SELECT
+                  COALESCE(SUM(CASE WHEN ufp.status = 'mastered' THEN 1 ELSE 0 END), 0) AS mastered,
+                  COALESCE(SUM(CASE WHEN ufp.status IS NOT NULL AND ufp.status <> 'mastered' THEN 1 ELSE 0 END), 0) AS learning,
+                  COALESCE(SUM(CASE WHEN ufp.entry_id IS NULL THEN 1 ELSE 0 END), 0) AS new
+                FROM vocabulary_entries ve
+                LEFT JOIN user_flashcard_progress ufp
+                  ON ufp.entry_id = ve.entry_id AND ufp.user_id = $1
+            "#,
+            vec![user_id.into()],
+        ))
+        .one(db)
+        .await?
+        .unwrap_or(TotalCounts { mastered: 0, learning: 0, new: 0 });
+
         let stats_rows = PartStatsRow::find_by_statement(Statement::from_sql_and_values(
             backend,
             r#"
                 SELECT ve.part_of_speech,
                        COUNT(*) AS total,
-                       COALESCE(SUM(CASE WHEN fp.status = 'mastered' THEN 1 ELSE 0 END), 0) AS mastered,
-                       COALESCE(SUM(CASE WHEN fp.status IS NOT NULL AND fp.status <> 'mastered' THEN 1 ELSE 0 END), 0) AS learning,
-                       COALESCE(SUM(CASE WHEN fp.entry_id IS NULL THEN 1 ELSE 0 END), 0) AS new
+                       COALESCE(SUM(CASE WHEN ufp.status = 'mastered' THEN 1 ELSE 0 END), 0) AS mastered,
+                       COALESCE(SUM(CASE WHEN ufp.status IS NOT NULL AND ufp.status <> 'mastered' THEN 1 ELSE 0 END), 0) AS learning,
+                       COALESCE(SUM(CASE WHEN ufp.entry_id IS NULL THEN 1 ELSE 0 END), 0) AS new
                 FROM vocabulary_entries ve
-                LEFT JOIN flashcard_progress fp ON fp.entry_id = ve.entry_id
+                LEFT JOIN user_flashcard_progress ufp
+                  ON ufp.entry_id = ve.entry_id AND ufp.user_id = $1
+                WHERE (ve.user_owner IS NULL OR ve.user_owner = $1)
                 GROUP BY ve.part_of_speech
                 ORDER BY ve.part_of_speech
             "#,
-            Vec::<Value>::new(),
+            vec![user_id.into()],
         ))
         .all(db)
         .await?;
@@ -166,9 +294,9 @@ impl FlashcardService {
 
         Ok(StatsResponse {
             total,
-            mastered,
-            learning,
-            new,
+            mastered: counts.mastered as u64,
+            learning: counts.learning as u64,
+            new: counts.new as u64,
             per_part_of_speech,
         })
     }
@@ -182,34 +310,6 @@ impl From<SharedState> for FlashcardService {
 
 const STATUS_MASTERED: &str = "mastered";
 const STATUS_LEARNING: &str = "learning";
-
-fn build_status_condition(status: Option<&str>) -> Result<Condition, AppError> {
-    let condition = match status {
-        None => Condition::any()
-            .add(flashcard_progress::Column::Status.is_null())
-            .add(flashcard_progress::Column::Status.ne(STATUS_MASTERED)),
-        Some(value) => {
-            let normalized = value.trim().to_lowercase();
-            match normalized.as_str() {
-                "new" => Condition::all().add(flashcard_progress::Column::Status.is_null()),
-                "mastered" => {
-                    Condition::all().add(flashcard_progress::Column::Status.eq(STATUS_MASTERED))
-                }
-                "learning" => Condition::all()
-                    .add(flashcard_progress::Column::Status.ne(STATUS_MASTERED))
-                    .add(flashcard_progress::Column::Status.is_not_null()),
-                other => {
-                    return Err(AppError::Validation(format!(
-                        "unsupported filter status '{}'",
-                        other
-                    )));
-                }
-            }
-        }
-    };
-
-    Ok(condition)
-}
 
 fn normalize_status(input: &str) -> Result<&'static str, AppError> {
     let normalized = input.trim().to_lowercase();
@@ -244,6 +344,13 @@ fn normalize_part_of_speech(input: &str) -> Result<String, AppError> {
 struct PartStatsRow {
     part_of_speech: String,
     total: i64,
+    mastered: i64,
+    learning: i64,
+    new: i64,
+}
+
+#[derive(Debug, FromQueryResult)]
+struct TotalCounts {
     mastered: i64,
     learning: i64,
     new: i64,

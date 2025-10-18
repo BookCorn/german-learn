@@ -6,3 +6,5 @@ pub use super::flashcard_reviews::Entity as FlashcardReviews;
 pub use super::vocabulary_entries::Entity as VocabularyEntries;
 pub use super::worter_des_substantivs::Entity as WorterDesSubstantivs;
 pub use super::worter_des_verbs::Entity as WorterDesVerbs;
+pub use super::user_flashcard_progress::Entity as UserFlashcardProgress;
+pub use super::user_flashcard_reviews::Entity as UserFlashcardReviews;

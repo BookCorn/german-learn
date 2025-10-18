@@ -1,0 +1,38 @@
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "user_flashcard_progress")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub progress_id: i64,
+    pub user_id: String,
+    pub entry_id: i32,
+    #[sea_orm(column_type = "Text")]
+    pub status: String,
+    pub times_seen: i32,
+    pub times_mastered: i32,
+    pub last_seen_at: Option<DateTimeWithTimeZone>,
+    pub created_at: DateTimeWithTimeZone,
+    pub updated_at: DateTimeWithTimeZone,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::vocabulary_entries::Entity",
+        from = "Column::EntryId",
+        to = "super::vocabulary_entries::Column::EntryId",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    VocabularyEntries,
+}
+
+impl Related<super::vocabulary_entries::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::VocabularyEntries.def()
+    }
+}
+
+impl ActiveModelBehavior for ActiveModel {}
+

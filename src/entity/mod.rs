@@ -8,3 +8,5 @@ pub mod flashcard_reviews;
 pub mod vocabulary_entries;
 pub mod worter_des_substantivs;
 pub mod worter_des_verbs;
+pub mod user_flashcard_progress;
+pub mod user_flashcard_reviews;

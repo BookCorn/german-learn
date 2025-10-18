@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::entity::{flashcard_progress, vocabulary_entries};
+use crate::entity::{flashcard_progress, user_flashcard_progress, vocabulary_entries};
 
 #[derive(Debug, Serialize)]
 pub struct FlashcardResponse {
@@ -80,6 +80,44 @@ impl FlashcardResponse {
     ) -> Self {
         let (status, times_seen, times_mastered, last_seen_at) = match progress {
             Some(flashcard_progress::Model {
+                status,
+                times_seen,
+                times_mastered,
+                last_seen_at,
+                ..
+            }) => (
+                Some(status),
+                times_seen,
+                times_mastered,
+                last_seen_at.map(|dt| dt.to_rfc3339()),
+            ),
+            None => (None, 0, 0, None),
+        };
+
+        let metadata = FlashcardMetadata::from_entry(&entry);
+
+        Self {
+            entry_id: entry.entry_id,
+            word: entry.word,
+            part_of_speech: entry.part_of_speech,
+            meaning: entry.meaning,
+            english: entry.english,
+            examples: entry.examples,
+            themes: entry.themes,
+            status,
+            times_seen,
+            times_mastered,
+            last_seen_at,
+            metadata,
+        }
+    }
+
+    pub fn from_entry_and_user_progress(
+        entry: vocabulary_entries::Model,
+        progress: Option<user_flashcard_progress::Model>,
+    ) -> Self {
+        let (status, times_seen, times_mastered, last_seen_at) = match progress {
+            Some(user_flashcard_progress::Model {
                 status,
                 times_seen,
                 times_mastered,

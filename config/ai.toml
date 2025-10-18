@@ -1,0 +1,4 @@
+api_key = "sk-NOfwfbIQQwrK0HAe71E2C941Ec9c46418e5b5b3cFb1dF198"
+base_url = "https://ai.synnovator.com:9443/v1"
+model    = "DeepSeek-V3.1"
+

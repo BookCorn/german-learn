@@ -12,6 +12,8 @@ use thiserror::Error;
 pub enum AppError {
     #[error("resource not found")]
     NotFound,
+    #[error("unauthorized")]
+    Unauthorized,
     #[error("validation error: {0}")]
     Validation(String),
     #[error("database error: {0}")]
@@ -30,6 +32,7 @@ impl AppError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::NotFound => StatusCode::NOT_FOUND,
+            Self::Unauthorized => StatusCode::UNAUTHORIZED,
             Self::Validation(_) => StatusCode::BAD_REQUEST,
             Self::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -39,6 +42,7 @@ impl AppError {
     fn message(&self) -> &str {
         match self {
             Self::NotFound => "resource not found",
+            Self::Unauthorized => "unauthorized",
             Self::Validation(msg) => msg,
             Self::Database(_) => "database error",
             Self::Unexpected(_) => "internal server error",
@@ -52,6 +56,7 @@ impl IntoResponse for AppError {
         let body = ErrorBody {
             error: match &self {
                 AppError::NotFound => "not_found",
+                AppError::Unauthorized => "unauthorized",
                 AppError::Validation(_) => "validation_error",
                 AppError::Database(_) => "database_error",
                 AppError::Unexpected(_) => "unexpected_error",

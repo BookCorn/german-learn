@@ -12,6 +12,8 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub part_of_speech: String,
     #[sea_orm(column_type = "Text", nullable)]
+    pub user_owner: Option<String>,
+    #[sea_orm(column_type = "Text", nullable)]
     pub english: Option<String>,
     #[sea_orm(column_type = "Text", nullable)]
     pub meaning: Option<String>,
